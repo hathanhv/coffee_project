@@ -145,26 +145,29 @@ class HyperparameterTuner:
 
     def run_all_models(self):
         self.run_grid_search("kmeans", {
-            "n_clusters": [3, 4, 5, 6, 7, 8],
-            "n_init": [10, 20]
+            "n_clusters": [3, 4, 5, 6, 7, 8, 9, 10],
+            "init": ["k-means++"],
+            "n_init": [10, 20],
+            "max_iter": [300]
         })
         self.run_grid_search("gmm", {
-            "n_clusters": [3, 4, 5, 6, 7],
-            "covariance_type": ["full", "diag"]
+            "n_clusters": [3, 4, 5, 6, 7, 8],
+            "covariance_type": ["full", "tied", "diag", "spherical"],
+            "n_init": [10],
+            "max_iter": [200]
         })
         self.run_grid_search("dbscan", {
-            "eps": [0.3, 0.5, 0.7, 1.0, 1.2, 1.5],
-            "min_samples": [5, 10, 15, 20]
+            "eps": [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0],
+            "min_samples": [5, 10, 15, 20],
+            "metric": ["euclidean", "manhattan"]
         })
         try:
             import hdbscan
             self.run_grid_search("hdbscan", {
-                "min_cluster_size": [5, 10, 15, 20, 30, 50],
-                "min_samples": [5, 10, 15, 20],
+                "min_cluster_size": [10, 20, 30, 50, 100],
+                "min_samples": [10, 20],
                 "metric": ["euclidean", "manhattan"],
-                "alpha": [0.5, 1.0, 1.5],
-                "cluster_selection_method": ["eom", "leaf"],
-                "cluster_selection_epsilon": [0.0, 0.1]
+                "cluster_selection_method": ["eom"]
             })
         except ImportError:
             self.logger.warning("HDBSCAN not installed, skipping...")

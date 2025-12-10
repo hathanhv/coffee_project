@@ -6,7 +6,7 @@ Pipeline hoàn chỉnh từ preprocessing đến clustering và visualization
 
 import os
 import sys
-import logging
+import pandas as pd
 from pathlib import Path
 
 # Add src to path
@@ -15,20 +15,7 @@ sys.path.append(str(Path(__file__).parent))
 from src.models.trainer import ModelTrainer, TrainingConfig
 from src.models.evaluator import ClusteringEvaluator
 from src.models.tuning import HyperparameterTuner, TuningConfig
-
-
-def setup_logger():
-    """Thiết lập logger cho main script"""
-    logger = logging.getLogger("Main")
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-    
-    if not logger.handlers:
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        logger.addHandler(handler)
-    
-    return logger
+from src.utils import setup_logger
 
 
 def train_single_model(logger):
@@ -42,7 +29,7 @@ def train_single_model(logger):
     # Cấu hình model
     config = TrainingConfig(
         data_path="data/processed/encoded_data.csv",
-        model_type="kmeans",  # Có thể đổi: 'kmeans', 'gmm', 'dbscan', 'hdbscan'
+        model_type="kmeans",  
         n_clusters=5,
         model_params={
             "n_init": 20,
@@ -81,7 +68,10 @@ def hyperparameter_tuning(logger):
     tuning_config = TuningConfig(
         data_path="data/processed/encoded_data.csv",
         results_path="results/tuning_results.csv",
-        metric_selection="silhouette"  # 'silhouette', 'calinski_harabasz', 'davies_bouldin'
+        metric_selection="composite",
+        silhouette_weight=0.4,
+        calinski_weight=0.3,
+        davies_weight=0.3
     )
     
     evaluator = ClusteringEvaluator()
@@ -97,7 +87,7 @@ def hyperparameter_tuning(logger):
         df_path="results/clustered_data.csv"
     )
     
-    logger.info("\n✅ Hyperparameter tuning completed!")
+    logger.info("\nHyperparameter tuning completed!")
     logger.info(f"   Results saved: {tuning_config.results_path}")
     logger.info(f"   Best model: results/best_model.pkl")
     logger.info(f"   Clustered data: results/clustered_data.csv")
@@ -192,32 +182,174 @@ def compare_models(logger):
     df_results = pd.DataFrame(results)
     
     logger.info("\n" + "="*80)
-    logger.info("📊 MODEL COMPARISON RESULTS")
+    logger.info("MODEL COMPARISON RESULTS")
     logger.info("="*80)
     print(df_results.to_string(index=False))
     
     # Lưu kết quả
     os.makedirs("results", exist_ok=True)
     df_results.to_csv("results/model_comparison.csv", index=False)
-    logger.info(f"\n💾 Comparison saved: results/model_comparison.csv")
+    logger.info(f"\nComparison saved: results/model_comparison.csv")
     
     return df_results
 
 
-def main():
-    """Main function với menu chọn mode"""
-    logger = setup_logger()
+def compare_models_with_tuning(logger):
+    """
+    Mode 5: Chạy hyperparameter tuning cho cả 4 models và so sánh composite scores
+    """
+    logger.info("\n" + "="*80)
+    logger.info("MODE 5: FULL TUNING & COMPARISON (COMPOSITE METRIC)")
+    logger.info("="*80)
+    
+    evaluator = ClusteringEvaluator()
+    all_results = []
+    
+    # 1. KMeans Tuning
+    logger.info("\n[1/4] Tuning KMeans...")
+    config_kmeans = TuningConfig(
+        data_path="data/processed/encoded_data.csv",
+        results_path="results/kmeans_composite_tuning.csv",
+        metric_selection="composite"
+    )
+    tuner_kmeans = HyperparameterTuner(config=config_kmeans, evaluator=evaluator)
+    tuner_kmeans.load_data()
+    tuner_kmeans.run_grid_search("kmeans", {
+        "n_clusters": [3, 4, 5, 6, 7, 8, 9, 10],
+        "init": ["k-means++"],
+        "n_init": [10, 20],
+        "max_iter": [300]
+    })
+    tuner_kmeans.save_results()
+    summary_kmeans = tuner_kmeans.get_summary()
+    if not summary_kmeans.empty:
+        best_kmeans = summary_kmeans.iloc[0]
+        all_results.append({
+            "model": "KMeans",
+            "n_clusters": best_kmeans.get("n_clusters", "N/A"),
+            "silhouette": best_kmeans.get("silhouette", 0),
+            "calinski_harabasz": best_kmeans.get("calinski_harabasz", 0),
+            "davies_bouldin": best_kmeans.get("davies_bouldin", 0),
+            "composite_score": best_kmeans.get("composite_score", 0)
+        })
+    
+    # 2. GMM Tuning
+    logger.info("\n[2/4] Tuning GMM...")
+    config_gmm = TuningConfig(
+        data_path="data/processed/encoded_data.csv",
+        results_path="results/gmm_composite_tuning.csv",
+        metric_selection="composite"
+    )
+    tuner_gmm = HyperparameterTuner(config=config_gmm, evaluator=evaluator)
+    tuner_gmm.load_data()
+    tuner_gmm.run_grid_search("gmm", {
+        "n_clusters": [3, 4, 5, 6, 7, 8],
+        "covariance_type": ["full", "tied", "diag", "spherical"],
+        "n_init": [10],
+        "max_iter": [200]
+    })
+    tuner_gmm.save_results()
+    summary_gmm = tuner_gmm.get_summary()
+    if not summary_gmm.empty:
+        best_gmm = summary_gmm.iloc[0]
+        all_results.append({
+            "model": "GMM",
+            "n_clusters": best_gmm.get("n_clusters", "N/A"),
+            "silhouette": best_gmm.get("silhouette", 0),
+            "calinski_harabasz": best_gmm.get("calinski_harabasz", 0),
+            "davies_bouldin": best_gmm.get("davies_bouldin", 0),
+            "composite_score": best_gmm.get("composite_score", 0)
+        })
+    
+    # 3. DBSCAN Tuning
+    logger.info("\n[3/4] Tuning DBSCAN...")
+    config_dbscan = TuningConfig(
+        data_path="data/processed/encoded_data.csv",
+        results_path="results/dbscan_composite_tuning.csv",
+        metric_selection="composite"
+    )
+    tuner_dbscan = HyperparameterTuner(config=config_dbscan, evaluator=evaluator)
+    tuner_dbscan.load_data()
+    tuner_dbscan.run_grid_search("dbscan", {
+        "eps": [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0],
+        "min_samples": [5, 10, 15, 20],
+        "metric": ["euclidean", "manhattan"]
+    })
+    tuner_dbscan.save_results()
+    summary_dbscan = tuner_dbscan.get_summary()
+    if not summary_dbscan.empty:
+        best_dbscan = summary_dbscan.iloc[0]
+        all_results.append({
+            "model": "DBSCAN",
+            "n_clusters": best_dbscan.get("n_clusters", "N/A"),
+            "silhouette": best_dbscan.get("silhouette", 0),
+            "calinski_harabasz": best_dbscan.get("calinski_harabasz", 0),
+            "davies_bouldin": best_dbscan.get("davies_bouldin", 0),
+            "composite_score": best_dbscan.get("composite_score", 0)
+        })
+    
+    # 4. HDBSCAN Tuning
+    logger.info("\n[4/4] Tuning HDBSCAN...")
+    try:
+        config_hdbscan = TuningConfig(
+            data_path="data/processed/encoded_data.csv",
+            results_path="results/hdbscan_composite_tuning.csv",
+            metric_selection="composite"
+        )
+        tuner_hdbscan = HyperparameterTuner(config=config_hdbscan, evaluator=evaluator)
+        tuner_hdbscan.load_data()
+        tuner_hdbscan.run_grid_search("hdbscan", {
+            "min_cluster_size": [10, 20, 30, 50, 100],
+            "min_samples": [10, 20],
+            "metric": ["euclidean", "manhattan"],
+            "cluster_selection_method": ["eom"]
+        })
+        tuner_hdbscan.save_results()
+        summary_hdbscan = tuner_hdbscan.get_summary()
+        if not summary_hdbscan.empty:
+            best_hdbscan = summary_hdbscan.iloc[0]
+            all_results.append({
+                "model": "HDBSCAN",
+                "n_clusters": best_hdbscan.get("n_clusters", "N/A"),
+                "silhouette": best_hdbscan.get("silhouette", 0),
+                "calinski_harabasz": best_hdbscan.get("calinski_harabasz", 0),
+                "davies_bouldin": best_hdbscan.get("davies_bouldin", 0),
+                "composite_score": best_hdbscan.get("composite_score", 0)
+            })
+    except ImportError:
+        logger.warning("  ⚠ HDBSCAN not installed, skipping...")
+    
+    # Hiển thị bảng so sánh
+    df_comparison = pd.DataFrame(all_results)
     
     logger.info("\n" + "="*80)
-    logger.info("🎯 HIGHLANDS COFFEE CUSTOMER SEGMENTATION")
+    logger.info("📊 TUNING COMPARISON RESULTS (COMPOSITE METRIC)")
+    logger.info("="*80)
+    print(df_comparison.to_string(index=False))
+    
+    # Lưu kết quả
+    os.makedirs("results", exist_ok=True)
+    df_comparison.to_csv("results/model_comparison_composite.csv", index=False)
+    logger.info(f"\n💾 Comparison saved: results/model_comparison_composite.csv")
+    
+    return df_comparison
+
+
+def main():
+    """Main function với menu chọn mode"""
+    logger = setup_logger("coffee_project_main", log_dir="logs")
+    
+    logger.info("\n" + "="*80)
+    logger.info("HIGHLANDS COFFEE CUSTOMER SEGMENTATION")
     logger.info("="*80)
     logger.info("\nChọn mode:")
     logger.info("  1. Train single model (nhanh, test model cụ thể)")
     logger.info("  2. Hyperparameter tuning (chậm, tìm best config)")
     logger.info("  3. Quick model comparison (so sánh 4 models)")
     logger.info("  4. Run all (chạy tất cả)")
+    logger.info("  5. Full tuning + comparison (composite metric)")
     
-    choice = input("\nNhập lựa chọn (1/2/3/4): ").strip()
+    choice = input("\nNhập lựa chọn (1/2/3/4/5): ").strip()
     
     if choice == "1":
         train_single_model(logger)
@@ -229,17 +361,20 @@ def main():
         compare_models(logger)
     
     elif choice == "4":
-        logger.info("\n🚀 Running all modes...")
+        logger.info("\nRunning all modes...")
         train_single_model(logger)
         compare_models(logger)
         hyperparameter_tuning(logger)
     
+    elif choice == "5":
+        compare_models_with_tuning(logger)
+    
     else:
-        logger.error("❌ Invalid choice!")
+        logger.error("Invalid choice!")
         return
     
     logger.info("\n" + "="*80)
-    logger.info("✅ ALL DONE!")
+    logger.info("ALL DONE!")
     logger.info("="*80)
 
 

@@ -184,7 +184,7 @@ metrics = trainer.evaluate()  # Silhouette, Calinski-Harabasz, Davies-Bouldin
 
 #### 5️⃣ **Tối Ưu Hyperparameter** (`src/models/tuning.py`)
 
-**🎯 4 Chế Độ Chọn Metric - Linh Hoạt Cho Mọi Model:**
+**4 Chế Độ Chọn Metric - Linh Hoạt Cho Mọi Model:**
 
 ```python
 from src.models.tuning import HyperparameterTuner, TuningConfig
@@ -246,8 +246,6 @@ for cluster_id in range(n_clusters):
 
 ## 🌟 Usage
 
-### Cách 1: Chạy Local
-
 ```bash
 # 1. Clone repo
 git clone <repo-url>
@@ -268,34 +266,6 @@ python main.py
 [4] Run All                 - Chạy toàn bộ pipeline
 ```
 
-### Cách 2: Google Colab
-
-**Mở file**: `notebooks/Run_Training_Colab.ipynb`
-
-```python
-# Cell 1: Mount Drive
-from google.colab import drive
-drive.mount('/content/drive')
-
-# Cell 2: Chuyển đến thư mục project
-%cd "/content/drive/MyDrive/coffee_project"
-
-# Cell 3: So Sánh Nhanh
-# So sánh 4 models: KMeans, GMM, DBSCAN, HDBSCAN
-
-# Cell 5B: HDBSCAN Tuning (Composite Score)
-# Grid search với 20-30 cấu hình, tự động chọn model tốt nhất
-
-# Cell 5C: GMM Tuning (Composite Score)
-# Test 20 cấu hình (5 n_clusters × 4 covariance types)
-```
-
-**Trực Quan Hóa**: `notebooks/Cluster_Visualization.ipynb`
-- Biểu đồ phân tán PCA 2D/3D
-- Trực quan hóa t-SNE
-- Phân tích đặc điểm cụm (nhân khẩu học, hành vi)
-
----
 
 ## 📊 Kết Quả
 
