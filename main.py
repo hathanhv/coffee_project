@@ -327,7 +327,33 @@ def compare_models_with_tuning(logger):
     logger.info("="*80)
     print(df_comparison.to_string(index=False))
     
-    # Lưu kết quả
+    # Tìm model tốt nhất dựa trên composite_score
+    if not df_comparison.empty:
+        best_idx = df_comparison['composite_score'].idxmax()
+        best_model_name = df_comparison.loc[best_idx, 'model']
+        best_composite = df_comparison.loc[best_idx, 'composite_score']
+        
+        logger.info(f"\n🏆 Best model: {best_model_name} (Composite Score: {best_composite:.4f})")
+        
+        # Lưu best model và clustered data
+        if best_model_name == "KMeans":
+            best_tuner = tuner_kmeans
+        elif best_model_name == "GMM":
+            best_tuner = tuner_gmm
+        elif best_model_name == "DBSCAN":
+            best_tuner = tuner_dbscan
+        elif best_model_name == "HDBSCAN":
+            best_tuner = tuner_hdbscan
+        
+        best_tuner.save_best_model_and_df(
+            model_path="results/best_model_composite.pkl",
+            df_path="results/clustered_data_composite.csv"
+        )
+        
+        logger.info(f"   Best model saved: results/best_model_composite.pkl")
+        logger.info(f"   Clustered data saved: results/clustered_data_composite.csv")
+    
+    # Lưu kết quả so sánh
     os.makedirs("results", exist_ok=True)
     df_comparison.to_csv("results/model_comparison_composite.csv", index=False)
     logger.info(f"\n💾 Comparison saved: results/model_comparison_composite.csv")

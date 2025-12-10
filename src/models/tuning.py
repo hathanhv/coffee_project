@@ -72,7 +72,7 @@ class HyperparameterTuner:
         if self.df_data is None:
             self.load_data()
 
-        self.logger.info(f"\n🚀 Starting Grid Search for: {model_type.upper()}")
+        self.logger.info(f"\nStarting Grid Search for: {model_type.upper()}")
         combos = self._generate_param_grid(model_type, param_grid)
         self.logger.info(f"  Total combinations to test: {len(combos)}")
 

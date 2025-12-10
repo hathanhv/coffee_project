@@ -38,7 +38,7 @@ CLEANED_FILES = {
 }
 
 # Models directory
-MODELS_DIR = PROJECT_ROOT / "models_saved"
+MODELS_DIR = PROJECT_ROOT / "results"
 
 # Reports directory
 REPORTS_DIR = PROJECT_ROOT / "reports"
