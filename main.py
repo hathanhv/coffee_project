@@ -46,6 +46,13 @@ def train_single_model(logger):
     trainer.train_model()
     metrics = trainer.evaluate()
     
+    # Log metrics
+    logger.info("\nTRAINING METRICS:")
+    logger.info(f"   Silhouette Score: {metrics.get('silhouette', 'N/A'):.4f}")
+    logger.info(f"   Calinski-Harabasz: {metrics.get('calinski_harabasz', 'N/A'):.2f}")
+    logger.info(f"   Davies-Bouldin: {metrics.get('davies_bouldin', 'N/A'):.4f}")
+    logger.info(f"   Number of Clusters: {metrics.get('n_clusters', 'N/A')}")
+    
     # Lưu kết quả
     trainer.save_model()
     trainer.save_labels("results/kmeans_labels.csv")
@@ -87,7 +94,20 @@ def hyperparameter_tuning(logger):
         df_path="results/clustered_data.csv"
     )
     
-    logger.info("\nHyperparameter tuning completed!")
+    # Log best results
+    summary = tuner.get_summary()
+    if not summary.empty:
+        best = summary.iloc[0]
+        logger.info("\n🏆 BEST MODEL FOUND:")
+        logger.info(f"   Model Type: {best.get('model_type', 'N/A')}")
+        logger.info(f"   N Clusters: {best.get('n_clusters', 'N/A')}")
+        logger.info(f"   Silhouette: {best.get('silhouette', 0):.4f}")
+        logger.info(f"   Calinski-Harabasz: {best.get('calinski_harabasz', 0):.2f}")
+        logger.info(f"   Davies-Bouldin: {best.get('davies_bouldin', 0):.4f}")
+        if 'composite_score' in best:
+            logger.info(f"   Composite Score: {best.get('composite_score', 0):.4f}")
+    
+    logger.info("\n✅ Hyperparameter tuning completed!")
     logger.info(f"   Results saved: {tuning_config.results_path}")
     logger.info(f"   Best model: results/best_model.pkl")
     logger.info(f"   Clustered data: results/clustered_data.csv")
@@ -182,14 +202,14 @@ def compare_models(logger):
     df_results = pd.DataFrame(results)
     
     logger.info("\n" + "="*80)
-    logger.info("MODEL COMPARISON RESULTS")
+    logger.info("📊 MODEL COMPARISON RESULTS")
     logger.info("="*80)
-    print(df_results.to_string(index=False))
+    logger.info("\n" + df_results.to_string(index=False))
     
     # Lưu kết quả
     os.makedirs("results", exist_ok=True)
     df_results.to_csv("results/model_comparison.csv", index=False)
-    logger.info(f"\nComparison saved: results/model_comparison.csv")
+    logger.info(f"\n💾 Comparison saved: results/model_comparison.csv")
     
     return df_results
 
@@ -325,7 +345,7 @@ def compare_models_with_tuning(logger):
     logger.info("\n" + "="*80)
     logger.info("📊 TUNING COMPARISON RESULTS (COMPOSITE METRIC)")
     logger.info("="*80)
-    print(df_comparison.to_string(index=False))
+    logger.info("\n" + df_comparison.to_string(index=False))
     
     # Tìm model tốt nhất dựa trên composite_score
     if not df_comparison.empty:
