@@ -98,7 +98,7 @@ coffee_project/
 
 ## 🔄 Pipeline Machine Learning
 
-![Workflow Pipeline](reports\figures\coffee_project_pipeline.png)
+![Workflow Pipeline](reports/figures/coffee_project_pipeline.png)
 *Workflow pipeline*
 
 ### Các Bước Trong Pipeline
