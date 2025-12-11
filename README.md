@@ -25,10 +25,14 @@ Dự án này xây dựng một **pipeline ML end-to-end** để phân cụm kh�
 ### Tính Năng Chính
 - **4 Thuật Toán Phân Cụm**: KMeans, GMM, DBSCAN, HDBSCAN - **Code tái sử dụng cho bất kỳ model nào**
 - **4 Chế Độ Chọn Metric Linh Hoạt**: 
-  - `"silhouette"` - Tối ưu theo Silhouette Score
-  - `"calinski_harabasz"` - Tối ưu theo Calinski-Harabasz Index
-  - `"davies_bouldin"` - Tối ưu theo Davies-Bouldin Index
-  - `"composite"` - Cân bằng cả 3 metrics (mặc định)
+  
+| Chế Độ | Khi Nào Dùng | Ưu Điểm |
+|--------|--------------|----------|
+| `"silhouette"` | Muốn cụm phân tách rõ ràng | Đơn giản, trực quan, range 0-1 |
+| `"calinski_harabasz"` | Muốn cụm compact, variance cao | Tốt cho K-means style clustering |
+| `"davies_bouldin"` | Muốn minimize overlap giữa cụm | Penalty cho cụm gần nhau |
+| `"composite"` | **Khuyên dùng** - cân bằng tất cả | Robust, tránh bias vào 1 metric |
+
 - **Pipeline Tái Sử Dụng**: Chỉ cần thay đổi `model_type` và `metric_selection` trong config
 - **Tự Động Tối Ưu Hyperparameter**: Grid search với 20-100+ cấu hình cho từng model
 - **Trực Quan Hóa Tương Tác**: PCA, t-SNE, Silhouette Analysis
@@ -68,6 +72,9 @@ coffee_project/
 │   │   ├── evaluator.py                        # 3 metrics: Silhouette, CH, DB
 │   │   └── save_load.py                        # Lưu/load model
 │   │
+│   ├── utils/
+│   │   └── logger.py                           # Ghi log
+│   │
 │   └── config.py                               # Cấu hình toàn cục
 │
 ├── 📁 notebooks/
@@ -91,17 +98,7 @@ coffee_project/
 
 ## 🔄 Pipeline Machine Learning
 
-```mermaid
-graph LR
-    A[Dữ Liệu Gốc<br/>5 File CSV] --> B[Làm Sạch Dữ Liệu]
-    B --> C[Feature Engineering<br/>RFM, PPA, Spending]
-    C --> D[Pipeline Encoding<br/>Ordinal + OneHot + Scaling]
-    D --> E[Models Phân Cụm<br/>KMeans, GMM, DBSCAN, HDBSCAN]
-    E --> F[Đánh Giá Composite Metric<br/>Sil + CH + DB]
-    F --> G[Chọn Model Tốt Nhất]
-    G --> H[Phân Tích Đặc Điểm Cụm]
-    H --> I[Trực Quan Hóa<br/>PCA, t-SNE, Silhouette]
-```
+![Workflow Pipeline](reports\figures\coffee_project_pipeline.png)
 
 ### Các Bước Trong Pipeline
 
@@ -267,7 +264,7 @@ python main.py
 ```
 
 
-## 📊 Kết Quả
+## Kết Quả
 
 ### So Sánh Các Model
 
@@ -278,7 +275,7 @@ python main.py
 | **DBSCAN** | 0.26 | 735.4 | 2.21 | 0.42 | 5 | 
 | **HDBSCAN** | 0.50 | 96.5 | 0.51 | 0.50 | 3 |
 
-### 🏆 Model Tốt Nhất: KMeans
+### Model Tốt Nhất: KMeans
 
 **Hyperparameters Tối Ưu**:
 ```python
@@ -306,35 +303,7 @@ python main.py
 ![Phân bố](results/cluster_distribution.png)
 *Kích thước cụm cân bằng (không cụm nào < 10%)*
 
----
 
-## Tính Năng Nổi Bật: Code Tái Sử Dụng & Linh Hoạt
-
-### ♻️ Pipeline Có Thể Tái Sử Dụng 100%
-
-Code được thiết kế để **dễ dàng thay đổi model và metric selection** mà không cần sửa logic:
-
-```python
-# Chỉ cần thay đổi 2 tham số này!
-config = TuningConfig(
-    metric_selection="composite",  # Đổi: "silhouette", "calinski_harabasz", "davies_bouldin"
-    model_type="kmeans"            # Đổi: "gmm", "dbscan", "hdbscan"
-)
-
-# Code còn lại giữ nguyên
-tuner = HyperparameterTuner(config=config)
-tuner.run_grid_search(model_type, grid_params)
-tuner.save_results()
-```
-
-### 🎛️ 4 Chế Độ Metric Selection
-
-| Chế Độ | Khi Nào Dùng | Ưu Điểm |
-|--------|--------------|----------|
-| `"silhouette"` | Muốn cụm phân tách rõ ràng | Đơn giản, trực quan, range 0-1 |
-| `"calinski_harabasz"` | Muốn cụm compact, variance cao | Tốt cho K-means style clustering |
-| `"davies_bouldin"` | Muốn minimize overlap giữa cụm | Penalty cho cụm gần nhau |
-| `"composite"` | **Khuyên dùng** - cân bằng tất cả | Robust, tránh bias vào 1 metric |
 
 
 

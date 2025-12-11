@@ -9,8 +9,6 @@ Tính năng chính:
 - Train model với cấu hình cố định
 - Đánh giá bằng 3 metrics: Silhouette, Calinski-Harabasz, Davies-Bouldin
 - Lưu/load model và labels
-
-Lưu ý: Logic tối ưu hyperparameters (grid-search) được chuyển sang module tuning.py
 """
 
 import logging
@@ -59,10 +57,6 @@ class TrainingConfig:
     model_path: str = "results/best_cluster_model.pkl"
     model_params: Dict[str, Any] = field(default_factory=dict)
 
-
-# ============================================================================
-# MODEL TRAINER CLASS
-# ============================================================================
 
 class ModelTrainer:
     """

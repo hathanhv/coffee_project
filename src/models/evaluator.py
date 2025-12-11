@@ -13,12 +13,126 @@ import pandas as pd
 import logging
 import matplotlib.pyplot as plt
 from typing import Dict, Any, Optional, Union, List
+from abc import ABC, abstractmethod
 from sklearn.metrics import (
     silhouette_score,
     calinski_harabasz_score,
     davies_bouldin_score
 )
 
+
+# ============================================================================
+# ABSTRACT BASE CLASS - TRỪU TƯỢNG
+# ============================================================================
+
+class BaseMetric(ABC):
+    """
+    Abstract Base Class cho tất cả clustering metrics
+    
+    Thể hiện tính TRỪU TƯỢNG trong OOP:
+    - Không thể khởi tạo trực tiếp
+    - Định nghĩa interface chung cho tất cả metrics
+    - Các class con phải implement abstract methods
+    """
+    
+    def __init__(self, name: str, higher_is_better: bool = True):
+        """
+        Khởi tạo base metric
+        
+        Args:
+            name: Tên metric
+            higher_is_better: True nếu giá trị cao hơn tốt hơn, False nếu ngược lại
+        """
+        self.name = name
+        self.higher_is_better = higher_is_better
+    
+    @abstractmethod
+    def compute(self, X: np.ndarray, labels: np.ndarray) -> float:
+        """
+        Tính toán metric (ABSTRACT METHOD - bắt buộc override)
+        
+        Args:
+            X: Feature matrix
+            labels: Cluster labels
+        
+        Returns:
+            Giá trị metric
+        """
+        pass
+    
+    def is_better(self, score1: float, score2: float) -> bool:
+        """
+        So sánh 2 scores xem score1 có tốt hơn score2 không
+        
+        Args:
+            score1: Score thứ nhất
+            score2: Score thứ hai
+        
+        Returns:
+            True nếu score1 tốt hơn score2
+        """
+        if self.higher_is_better:
+            return score1 > score2
+        else:
+            return score1 < score2
+    
+    def __repr__(self) -> str:
+        direction = "↑" if self.higher_is_better else "↓"
+        return f"{self.name} ({direction} better)"
+
+
+# ============================================================================
+# CONCRETE METRIC CLASSES - KẾ THỪA & ĐA HÌNH
+# ============================================================================
+
+class SilhouetteMetric(BaseMetric):
+    """
+    Silhouette Score Metric
+    
+    Kế thừa từ BaseMetric và override compute() - thể hiện ĐA HÌNH
+    """
+    
+    def __init__(self):
+        super().__init__(name="Silhouette Score", higher_is_better=True)
+    
+    def compute(self, X: np.ndarray, labels: np.ndarray) -> float:
+        """Override compute() - ĐA HÌNH"""
+        return float(silhouette_score(X, labels))
+
+
+class CalinskiMetric(BaseMetric):
+    """
+    Calinski-Harabasz Score Metric
+    
+    Kế thừa từ BaseMetric và override compute() - thể hiện ĐA HÌNH
+    """
+    
+    def __init__(self):
+        super().__init__(name="Calinski-Harabasz Score", higher_is_better=True)
+    
+    def compute(self, X: np.ndarray, labels: np.ndarray) -> float:
+        """Override compute() - ĐA HÌNH"""
+        return float(calinski_harabasz_score(X, labels))
+
+
+class DaviesMetric(BaseMetric):
+    """
+    Davies-Bouldin Index Metric
+    
+    Kế thừa từ BaseMetric và override compute() - thể hiện ĐA HÌNH
+    """
+    
+    def __init__(self):
+        super().__init__(name="Davies-Bouldin Index", higher_is_better=False)
+    
+    def compute(self, X: np.ndarray, labels: np.ndarray) -> float:
+        """Override compute() - ĐA HÌNH"""
+        return float(davies_bouldin_score(X, labels))
+
+
+# ============================================================================
+# MAIN EVALUATOR CLASS
+# ============================================================================
 
 class ClusteringEvaluator:
     """
@@ -56,6 +170,13 @@ class ClusteringEvaluator:
             self.logger.propagate = False  # Tránh log trùng lặp
         else:
             self.logger = logger
+        
+        # Khởi tạo các metric objects (sử dụng KẾ THỪA & ĐA HÌNH)
+        self.metrics: Dict[str, BaseMetric] = {
+            'silhouette': SilhouetteMetric(),
+            'calinski_harabasz': CalinskiMetric(),
+            'davies_bouldin': DaviesMetric()
+        }
         
         # Lưu kết quả đánh giá
         self.results_: List[Dict[str, Any]] = []
@@ -111,31 +232,21 @@ class ClusteringEvaluator:
             self.logger.error(error_msg)
             raise ValueError(error_msg)
         
-        # Tính các metric
+        # Tính các metric (sử dụng ĐA HÌNH - mỗi metric compute() khác nhau)
         try:
-            silhouette = silhouette_score(X_array, labels_array)
-            calinski = calinski_harabasz_score(X_array, labels_array)
-            davies_bouldin = davies_bouldin_score(X_array, labels_array)
-            
-            # Lưu kết quả
             result = {
                 'model': model_name,
                 'n_clusters': n_unique_labels,
-                'silhouette': float(silhouette),
-                'calinski_harabasz': float(calinski),
-                'davies_bouldin': float(davies_bouldin)
             }
+            
+            # Dùng polymorphism: gọi compute() của từng metric object
+            for metric_name, metric_obj in self.metrics.items():
+                result[metric_name] = metric_obj.compute(X_array, labels_array)
             
             # Thêm vào results_
             self.results_.append(result)
             
-            # Không log nữa, trainer.py sẽ tự log
-            # self.logger.info(f"  ✓ {model_name}:")
-            # self.logger.info(f"    - Số cụm: {n_unique_labels}")
-            # self.logger.info(f"    - Silhouette Score: {silhouette:.4f}")
-            # self.logger.info(f"    - Calinski-Harabasz Score: {calinski:.2f}")
-            # self.logger.info(f"    - Davies-Bouldin Index: {davies_bouldin:.4f}")
-            
+           
             return result
             
         except Exception as e:

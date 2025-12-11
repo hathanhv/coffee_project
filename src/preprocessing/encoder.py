@@ -30,6 +30,16 @@ from sklearn.pipeline import Pipeline
 import joblib
 import os
 
+# Import encoding configurations from config
+from src.config import (
+    DROP_COLS,
+    LOG_NUMERIC_COLS,
+    NUMERIC_COLS,
+    ORDINAL_COLS,
+    CATEGORICAL_COLS,
+    ORDINAL_CATEGORIES
+)
+
 
 # ============================================================================
 # CONFIGURATION CLASS
@@ -120,68 +130,8 @@ class FeatureEncoder:
     """
     
     # ========================================================================
-    # ĐỊNH NGHĨA CÁC NHÓM CỘT
+    # NOTE: Column definitions moved to src/config.py for better reusability
     # ========================================================================
-    
-    # Các cột cần DROP (không dùng cho model)
-    DROP_COLS = [
-        'ID', 'Year',
-        'TOM', 'BUMO', 'BUMO_Previous', 'MostFavourite',
-        'Brand',
-        'Spontaneous', 'Trial', 'P3M', 'P1M', 'Weekly', 'Daily',
-        'Needstates',
-        'Awareness',
-        'Attribute', 'BrandImage',
-        'Occupation'  # Trùng với Occupation_Group
-    ]
-    
-    # Các cột NUMERIC cần LOG transform (Visit, Spending, PPA)
-    LOG_NUMERIC_COLS = [
-        'Visit',
-        'Spending', 
-        'PPA'
-    ]
-    
-    # Các cột NUMERIC thông thường (không log, chỉ scale)
-    NUMERIC_COLS = [
-        'Age',
-        'Group_size',
-        'NPS_P3M',
-        'Brand_Loyalty',
-        'Brand_Switcher',
-        'Funnel_Depth',
-        'Awareness_Usage_Gap',
-        'Need_is_Drinking',
-        'Awareness_flag',
-        'Spontaneous_flag',
-        'Trial_flag',
-        'P3M_flag',
-        'P1M_flag',
-        'Weekly_flag',
-        'Daily_flag'
-    ]
-    
-    # Các cột ORDINAL (có thứ tự tự nhiên)
-    ORDINAL_COLS = [
-        'Segmentation',
-        'Age_Group_2',
-        'Comprehension'
-    ]
-    
-    # Các cột CATEGORICAL (không có thứ tự)
-    CATEGORICAL_COLS = [
-        'City',
-        'Gender',
-        'Occupation_Group',
-        'Daypart',
-        'NeedstateGroup',
-        'TOM_Group',
-        'BUMO_Group',
-        'BUMO_Previous_Group',
-        'MostFavourite_Group',
-        'NPS_P3M_Group',
-        'Brand_Likability'
-    ]
     
     def __init__(self, config: Optional[EncoderConfig] = None):
         """
@@ -193,42 +143,6 @@ class FeatureEncoder:
         self.config = config if config is not None else EncoderConfig()
         self.preprocessor_ = None
         self.feature_names_ = None
-    
-    @staticmethod
-    def _get_ordinal_categories():
-        """
-        Định nghĩa thứ tự cho các biến ordinal
-        
-        Returns:
-            List of lists chứa thứ tự categories cho mỗi ordinal feature
-            Theo đúng thứ tự: [Segmentation, Age_Group_2, Comprehension]
-        """
-        return [
-            # Segmentation: theo mức chi tiêu từ thấp đến cao
-            [
-                'Seg.01 - Mass (<VND 25K)',
-                'Seg.02 - Mass Asp (VND 25K - VND 59K)',
-                'Seg.03 - Premium (VND 60K - VND 99K)',
-                'Seg.04 - Super Premium (VND 100K+)'
-            ],
-            # Age_Group_2: theo độ tuổi tăng dần
-            [
-                '16 - 19 y.o.',
-                '20 - 24 y.o.',
-                '25 - 29 y.o.',
-                '30 - 34 y.o.',
-                '35 - 39 y.o.',
-                '40 - 44 y.o.',
-                '45+ y.o.'
-            ],
-            # Comprehension: từ không biết đến biết rõ
-            # Nếu chỉ có Yes/No thì sẽ tự động handle
-            [
-                "Don't know",
-                'Know a little',
-                'Know well'
-            ]
-        ]
     
     def _build_preprocessor(self):
         """
@@ -256,7 +170,7 @@ class FeatureEncoder:
         
         # 3. OrdinalEncoder cho ORDINAL
         ordinal_encoder = OrdinalEncoder(
-            categories=self._get_ordinal_categories(),
+            categories=ORDINAL_CATEGORIES,
             handle_unknown='use_encoded_value',
             unknown_value=-1
         )
@@ -271,10 +185,10 @@ class FeatureEncoder:
         # 5. Tạo ColumnTransformer
         preprocessor = ColumnTransformer(
             transformers=[
-                ('log_num', log_num_pipeline, self.LOG_NUMERIC_COLS),
-                ('num', num_pipeline, self.NUMERIC_COLS),
-                ('ord', ordinal_encoder, self.ORDINAL_COLS),
-                ('cat', onehot_encoder, self.CATEGORICAL_COLS)
+                ('log_num', log_num_pipeline, LOG_NUMERIC_COLS),
+                ('num', num_pipeline, NUMERIC_COLS),
+                ('ord', ordinal_encoder, ORDINAL_COLS),
+                ('cat', onehot_encoder, CATEGORICAL_COLS)
             ],
             remainder='drop',  # Drop các cột không được chỉ định
             verbose_feature_names_out=False
@@ -295,7 +209,7 @@ class FeatureEncoder:
         df_prep = df.copy()
         
         # Drop các cột không dùng (nếu có trong df)
-        cols_to_drop = [col for col in self.DROP_COLS if col in df_prep.columns]
+        cols_to_drop = [col for col in DROP_COLS if col in df_prep.columns]
         if cols_to_drop:
             df_prep = df_prep.drop(columns=cols_to_drop)
             print(f"Đã drop {len(cols_to_drop)} cột: {cols_to_drop[:5]}...")
@@ -361,10 +275,10 @@ class FeatureEncoder:
         
         # 3. Fit & Transform
         print("\n[3/3] Fit và transform dữ liệu...")
-        print(f"  - Log + Scale: {len(self.LOG_NUMERIC_COLS)} cột")
-        print(f"  - Scale only: {len(self.NUMERIC_COLS)} cột")
-        print(f"  - Ordinal encode: {len(self.ORDINAL_COLS)} cột")
-        print(f"  - One-hot encode: {len(self.CATEGORICAL_COLS)} cột")
+        print(f"  - Log + Scale: {len(LOG_NUMERIC_COLS)} cột")
+        print(f"  - Scale only: {len(NUMERIC_COLS)} cột")
+        print(f"  - Ordinal encode: {len(ORDINAL_COLS)} cột")
+        print(f"  - One-hot encode: {len(CATEGORICAL_COLS)} cột")
         
         X = self.preprocessor_.fit_transform(df_prep)
         

@@ -230,7 +230,7 @@ class HyperparameterTuner:
 
         os.makedirs(os.path.dirname(self.config.results_path), exist_ok=True)
         df.to_csv(self.config.results_path, index=False)
-        self.logger.info(f"\n💾 Tuning results saved to: {self.config.results_path}")
+        self.logger.info(f"\nTuning results saved to: {self.config.results_path}")
 
         self.logger.info("\n🏆 TOP 3 MODELS:")
         cols = ['model_type', 'n_clusters', 'silhouette', 'calinski_harabasz', 'davies_bouldin']
@@ -246,7 +246,7 @@ class HyperparameterTuner:
             best_result = self.all_results[best_row_idx]
             self.best_params = {k: v for k, v in best_result.items() 
                               if k in ['model_type', 'n_clusters'] or k not in ['silhouette', 'calinski_harabasz', 'davies_bouldin', 'n_clusters', 'model', 'composite_score']}
-            self.logger.info(f"\n✅ Best model updated based on composite score: {best_result.get('model_type', 'unknown')}")
+            self.logger.info(f"\nBest model updated based on composite score: {best_result.get('model_type', 'unknown')}")
 
     def save_best_model_and_df(self, model_path: str = "results/best_model.pkl", df_path: str = "results/clustered_data.csv"):
         if self.best_model is None or self.best_labels is None:
@@ -257,12 +257,12 @@ class HyperparameterTuner:
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         with open(model_path, "wb") as f:
             pickle.dump(self.best_model, f)
-        self.logger.info(f"💾 Best model saved to: {model_path}")
+        self.logger.info(f"Best model saved to: {model_path}")
 
         df_clustered = self.df_data.copy()
         df_clustered["cluster"] = self.best_labels
         df_clustered.to_csv(df_path, index=False)
-        self.logger.info(f"💾 Clustered DataFrame saved to: {df_path}")
+        self.logger.info(f"Clustered DataFrame saved to: {df_path}")
 
 
 # ============================================================================
