@@ -216,12 +216,6 @@ Trong đó:
 - **Calinski-Harabasz** (đã chuẩn hóa): Cao hơn = cụm rõ ràng hơn
 - **Davies-Bouldin** (đảo ngược & chuẩn hóa): Thấp hơn = cụm compact hơn
 
-**Tại Sao Dùng Composite?**: Metric đơn lẻ có thể gây nhầm lẫn (VD: silhouette cao nhưng phân cụm mất cân bằng). Composite score đảm bảo:
-
-✅ Phân tách tốt (Silhouette)  
-✅ Tỷ lệ phương sai cao (Calinski-Harabasz)  
-✅ Cụm compact (Davies-Bouldin)
-
 #### 6️⃣ **Phân Tích Đặc Điểm Cụm** (`notebooks/Cluster_Visualization.ipynb`)
 ```python
 # Phân tích đặc điểm của từng cụm
@@ -261,6 +255,7 @@ python main.py
 [2] Hyperparameter Tuning   - Grid search tìm tham số tối ưu
 [3] Quick Comparison        - So sánh nhanh 4 models
 [4] Run All                 - Chạy toàn bộ pipeline
+[5] Full tuning + comparison
 ```
 
 
